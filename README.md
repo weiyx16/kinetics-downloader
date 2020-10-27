@@ -4,6 +4,14 @@ Simple tool to download videos from [kinetics dataset](https://deepmind.com/rese
 
 Also have functionality to trim downloaded videos to the length of action. To support trimming, ffmpeg should be installed and added to environment variable PATH.
 
+## Update
+
++ Add support for downloading **Test Part** of kinetics dataset.
++ Test if support the newest [kinetics-700 2020edition](https://arxiv.org/pdf/2010.10864.pdf)
++ Transfer from *pytube* to *youtube-dl*
++ Add support when the downloaded video is in *mkv* format not in *mp4* format
++ Add metadata creation for successful downloaded videos and untrimmed videos\[maybe caused by unsuccessfule downloading\]
+
 ## Usage
 Install requirements first
 ```
