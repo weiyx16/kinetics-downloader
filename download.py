@@ -1,4 +1,5 @@
 import pandas as pd
+import time
 import argparse
 import os
 import shutil
@@ -16,9 +17,9 @@ URL_BASE = 'https://www.youtube.com/watch?v='
 VIDEO_EXTENSION = '.mp4'
 VIDEO_FORMAT = 'mp4'
 TOTAL_VIDEOS = 0
-VIDEO_DOWNLOADED = set()
-failed_ = []
-
+Flist = "./Fail_download_video.txt"
+FTlist = "./Fail_trimmed_video.txt"
+Slist = "./Success_trimmed_video.txt"
 
 def create_file_structure(path, folders_names):
     """
@@ -37,7 +38,7 @@ def create_file_structure(path, folders_names):
     return mapping
 
 
-def download_clip(row, label_to_dir, trim, count, is_test=False):
+def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False):
     """
     Download clip from youtube.
     row: dict-like objects with keys: ['label', 'youtube_id', 'time_start', 'time_end']
@@ -58,42 +59,50 @@ def download_clip(row, label_to_dir, trim, count, is_test=False):
         output_path = label_to_dir['tmp'] if trim else label_to_dir['.']
 
     # don't download if already exists
-    if not os.path.exists(os.path.join(output_path, filename + VIDEO_EXTENSION)):
-        print('Start downloading: ', filename)
-        try:
-            # pytube.YouTube(URL_BASE + filename).\
-            #     streams.filter(subtype=VIDEO_FORMAT).first().\
-            #     download(output_path, filename)
-            return_code = subprocess.call(
-            ["youtube-dl", URL_BASE + filename, "--quiet", "-f",
-            "bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
-            print('Finish downloading: ', filename)
-            VIDEO_DOWNLOADED.add(filename)
-        except KeyError:
-            print('Unavailable video: ', filename)
-            return
-#         uncomment, if you want to skip any error:
-#
-#         except:
-#             print('Don\'t know why something went wrong(')
-#             return
+    input_filename = os.path.join(output_path, filename + VIDEO_EXTENSION)
+    start = str(time_start)
+    end = str(time_end - time_start)
+    output_filename = os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION)
+
+    if not os.path.exists(input_filename):
+        start = str(time_start)
+        end = str(time_end - time_start)
+        # don't download if already trimmed
+        if not os.path.exists(output_filename):
+            print('Start downloading: ', filename)
+            try:
+                # pytube.YouTube(URL_BASE + filename).\
+                #     streams.filter(subtype=VIDEO_FORMAT).first().\
+                #     download(output_path, filename)
+				# , "--proxy", proxy
+                # 'bestvideo[height<=480]+bestaudio/best[height<=480]'
+                subprocess.check_output(
+                ["youtube-dl", URL_BASE + filename, "--quiet", "-f",
+                "bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
+                # https://l1ving.github.io/youtube-dl/#format-selection-examples
+                print('Success downloading: ', filename)
+            except: # subprocess.CalledProcessError:
+                with open(Flist, 'a+') as f:
+                    lines = f.readlines()
+                    if (URL_BASE + filename) not in lines:
+                        f.write(URL_BASE + filename+'\n')
+                print('Failed: Unavailable video: ', filename)
+
     else:
         print('Already downloaded: ', filename)
-
+    time_ = time.time()
     if trim:
         # Take video from tmp folder and put trimmed to final destination folder
         # better write full path to video
 
-        start = str(time_start)
-        end = str(time_end - time_start)
-
-        input_filename = os.path.join(output_path, filename + VIDEO_EXTENSION)
-        output_filename = os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'],
-                                       filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION)
-
         if os.path.exists(output_filename):
             print('Already trimmed: ', filename)
-        else:
+            with open(Slist, 'a+') as f:
+                lines = f.readlines()
+                if (filename + '_{}_{}'.format(start, end)) not in lines:
+                    f.write(filename + '_{}_{}'.format(start, end)+'\n')
+                
+        elif os.path.exists(input_filename):
             print('Start trimming: ', filename)
             # Construct command to trim the videos (ffmpeg required).
             flag = 0
@@ -109,11 +118,14 @@ def download_clip(row, label_to_dir, trim, count, is_test=False):
                        )
             try:
                 subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
-                flag = 1
+                flag = 1 
             except subprocess.CalledProcessError:
                 flag = 0
-                # return False
-            if flag == 0:
+            if flag == 1:
+                with open(Slist, 'a') as f:
+                    f.write(filename + '_{}_{}'.format(start, end)+'\n')
+                print('Finish trimming: ', filename) 
+            else:
                 # sometimes the downloaded video are saved as mkl
                 input_filename = os.path.join(output_path, filename + '.mkv')
                 command = 'ffmpeg -i "{input_filename}" ' \
@@ -129,18 +141,32 @@ def download_clip(row, label_to_dir, trim, count, is_test=False):
                         )
                 try:
                     subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
+                    with open(Slist, 'a') as f:
+                        f.write(filename + '_{}_{}'.format(start, end)+'\n')
+                    flag = 1
+                    print('Finish trimming: ', filename)
                 except subprocess.CalledProcessError:
                     print('Error while trimming: ', filename)
-                    failed_.append(command)
-            print('Finish trimming: ', filename)
-            # subprocess.call("rm {}".format(input_filename))
+                    with open(FTlist, 'a+') as f:
+                        lines = f.readlines()
+                        if command not in lines:
+                            f.write(command+'\n')
+                        flag = 0
+
+            if flag == 1:
+                try:
+                    #subprocess.call("sudo rm {}".format(input_filename), shell=True)
+                    subprocess.Popen("sudo rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
+                except:
+                    print("ERROR: rm {}".format(input_filename))
+    time_ = time.time() - time_
+    if time_ < 5:
+        time.sleep(5-time_)
     print('Processed %i out of %i' % (count + 1, TOTAL_VIDEOS))
 
 
-def main(input_csv, output_dir, trim, num_jobs):
+def main(input_csv, output_dir, trim, num_jobs, proxy):
     global TOTAL_VIDEOS
-    global VIDEO_DOWNLOADED
-    global failed_
 
     assert input_csv[-4:] == '.csv', 'Provided input is not a .csv file'
     links_df = pd.read_csv(input_csv)
@@ -159,28 +185,20 @@ def main(input_csv, output_dir, trim, num_jobs):
     TOTAL_VIDEOS = links_df.shape[0]
     # Download files by links from dataframe
     Parallel(n_jobs=num_jobs)(delayed(download_clip)(
-            row, label_to_dir, trim, count, is_test=True if 'test' in input_csv else False) for count, row in links_df.iterrows())
+            row, label_to_dir, trim, count, proxy, is_test=True if 'test' in input_csv else False) for count, row in links_df.iterrows())
 
     # Clean tmp directory
-    shutil.rmtree(label_to_dir['tmp'])
-
-    # Save downloaed video ids
-    with open("./Downloaded_{}.txt".format(input_csv[-4:])) as f:
-        for _id in VIDEO_DOWNLOADED:
-            f.write(_id+'\n')
-    with open("./Failed_{}.txt".format(input_csv[-4:])) as f:
-        for fail_command in failed_:
-            f.write(fail_command+'\n')
+    # shutil.rmtree(label_to_dir['tmp'])
 
 if __name__ == '__main__':
     description = 'Script for downloading and trimming videos from Kinetics dataset.' \
                   'Supports Kinetics-400 as well as Kinetics-600 and Kinetics-700-2020.'
     p = argparse.ArgumentParser(description=description)
-    p.add_argument('input_csv', type=str,
+    p.add_argument('--input_csv', type=str,
                    help=('Path to csv file, containing links to youtube videos.\n'
                          'Should contain following columns:\n'
                          'label, youtube_id, time_start, time_end, split, is_cc'))
-    p.add_argument('output_dir', type=str,
+    p.add_argument('--output_dir', type=str,
                    help='Output directory where videos will be saved.\n'
                         'It will be created if doesn\'t exist')
     p.add_argument('--trim', action='store_true', dest='trim', default=False,
@@ -188,4 +206,10 @@ if __name__ == '__main__':
                         'Requires "ffmpeg" installed and added to environment PATH')
     p.add_argument('--num-jobs', type=int, default=1,
                    help='Number of parallel processes for downloading and trimming.')
+    p.add_argument('--proxy', type=str, default="socks5://127.0.0.1:10808",
+                   help='Use the specified HTTP/HTTPS/SOCKS proxy. \n'
+                        'To enable SOCKS proxy, specify a proper scheme.\n'
+                        'For example socks5://127.0.0.1:1080/. \n'
+                        'Pass in an empty string (--proxy "") for direct connection.')
     main(**vars(p.parse_args()))
+
