@@ -15,6 +15,7 @@ TRIM_FORMAT = '%06d'
 URL_BASE = 'https://www.youtube.com/watch?v='
 
 VIDEO_EXTENSION = '.mp4'
+VIDEO_EXTENSION_V2 = '.mkv'
 VIDEO_FORMAT = 'mp4'
 TOTAL_VIDEOS = 0
 Flist = "./Fail_download_video.txt"
@@ -60,11 +61,12 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False):
 
     # don't download if already exists
     input_filename = os.path.join(output_path, filename + VIDEO_EXTENSION)
+    input_filenameV2 = os.path.join(output_path, filename + VIDEO_EXTENSION_V2)
     start = str(time_start)
     end = str(time_end - time_start)
     output_filename = os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION)
 
-    if not os.path.exists(input_filename):
+    if not os.path.exists(input_filename) and not os.path.exists(input_filenameV2):
         start = str(time_start)
         end = str(time_end - time_start)
         # don't download if already trimmed
@@ -74,12 +76,12 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False):
                 # pytube.YouTube(URL_BASE + filename).\
                 #     streams.filter(subtype=VIDEO_FORMAT).first().\
                 #     download(output_path, filename)
-				# , "--proxy", proxy
+				        # , "--proxy", proxy
                 # 'bestvideo[height<=480]+bestaudio/best[height<=480]'
+                # https://l1ving.github.io/youtube-dl/#format-selection-examples
                 subprocess.check_output(
                 ["youtube-dl", URL_BASE + filename, "--quiet", "-f",
                 "bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
-                # https://l1ving.github.io/youtube-dl/#format-selection-examples
                 print('Success downloading: ', filename)
             except: # subprocess.CalledProcessError:
                 with open(Flist, 'a+') as f:
@@ -90,22 +92,18 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False):
 
     else:
         print('Already downloaded: ', filename)
+    
     time_ = time.time()
     if trim:
         # Take video from tmp folder and put trimmed to final destination folder
         # better write full path to video
-
         if os.path.exists(output_filename):
             print('Already trimmed: ', filename)
             with open(Slist, 'a+') as f:
                 lines = f.readlines()
                 if (filename + '_{}_{}'.format(start, end)) not in lines:
                     f.write(filename + '_{}_{}'.format(start, end)+'\n')
-                
         elif os.path.exists(input_filename):
-            print('Start trimming: ', filename)
-            # Construct command to trim the videos (ffmpeg required).
-            flag = 0
             command = 'ffmpeg -i "{input_filename}" ' \
                       '-ss {time_start} ' \
                       '-t {time_end} ' \
@@ -115,50 +113,43 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False):
                            time_start=start,
                            time_end=end,
                            output_filename=output_filename
-                       )
-            try:
-                subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
-                flag = 1 
-            except subprocess.CalledProcessError:
-                flag = 0
-            if flag == 1:
-                with open(Slist, 'a') as f:
-                    f.write(filename + '_{}_{}'.format(start, end)+'\n')
-                print('Finish trimming: ', filename) 
-            else:
-                # sometimes the downloaded video are saved as mkl
-                input_filename = os.path.join(output_path, filename + '.mkv')
-                command = 'ffmpeg -i "{input_filename}" ' \
+                       ) 
+        elif os.path.exists(input_filenameV2):
+            input_filename = input_filenameV2
+            command = 'ffmpeg -i "{input_filename}" ' \
                         '-ss {time_start} ' \
                         '-t {time_end} ' \
                         '-strict -2 ' \
                         '-c:v libx264 -c:a copy -threads 1 ' \
-                        '"{output_filename}"'.format(
+                        '"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -strict -2 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' \
+                        .format(
                             input_filename=input_filename,
                             time_start=start,
                             time_end=end,
-                            output_filename=output_filename
+                            output_filenameV2=os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION_V2),
+                            output_filename=output_filename,
                         )
-                try:
-                    subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
-                    with open(Slist, 'a') as f:
-                        f.write(filename + '_{}_{}'.format(start, end)+'\n')
-                    flag = 1
-                    print('Finish trimming: ', filename)
-                except subprocess.CalledProcessError:
-                    print('Error while trimming: ', filename)
-                    with open(FTlist, 'a+') as f:
-                        lines = f.readlines()
-                        if command not in lines:
-                            f.write(command+'\n')
-                        flag = 0
-
-            if flag == 1:
+        else:
+            print("WARNING: Need to trim but can't find video: ", filename)
+        if not os.path.exists(output_filename) and (os.path.exists(input_filename) or os.path.exists(input_filenameV2)):
+            print('Start trimming: ', filename)
+            # Construct command to trim the videos (ffmpeg required).
+            try:
+                subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
+                with open(Slist, 'a') as f:
+                    f.write(filename + '_{}_{}'.format(start, end)+'\n')
+                print('Successful trimming: ', filename)
                 try:
                     #subprocess.call("sudo rm {}".format(input_filename), shell=True)
                     subprocess.Popen("sudo rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
                 except:
                     print("ERROR: rm {}".format(input_filename))
+            except: # subprocess.CalledProcessError:
+                print('Error while trimming: ', filename)
+                with open(FTlist, 'a+') as f:
+                    lines = f.readlines()
+                    if command not in lines:
+                        f.write(command+'\n')
     time_ = time.time() - time_
     if time_ < 5:
         time.sleep(5-time_)
@@ -212,4 +203,3 @@ if __name__ == '__main__':
                         'For example socks5://127.0.0.1:1080/. \n'
                         'Pass in an empty string (--proxy "") for direct connection.')
     main(**vars(p.parse_args()))
-
