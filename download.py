@@ -39,7 +39,7 @@ def create_file_structure(path, folders_names):
     return mapping
 
 
-def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use_cude=False):
+def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use_cuda=False):
     """
     Download clip from youtube.
     row: dict-like objects with keys: ['label', 'youtube_id', 'time_start', 'time_end']
@@ -76,7 +76,7 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                 # pytube.YouTube(URL_BASE + filename).\
                 #     streams.filter(subtype=VIDEO_FORMAT).first().\
                 #     download(output_path, filename)
-				        # , "--proxy", proxy
+                        # , "--proxy", proxy
                 # 'bestvideo[height<=480]+bestaudio/best[height<=480]'
                 # https://l1ving.github.io/youtube-dl/#format-selection-examples
                 subprocess.check_output(
@@ -104,54 +104,51 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                 if (filename + '_{}_{}'.format(start, end)) not in lines:
                     f.write(filename + '_{}_{}'.format(start, end)+'\n')
         elif os.path.exists(input_filename):
-	    if use_cuda:
+            if use_cuda:
                 command = 'ffmpeg -hwaccel cuvid -y -i "{input_filename}" ' \
-				  '-ss {time_start} ' \
-				  '-t {time_end} ' \
-				  '-c:v h264_nvenc -c:a copy -threads 1 ' \
-				  '"{output_filename}"'.format(
-					   input_filename=input_filename,
-					   time_start=start,
-					   time_end=end,
-					   output_filename=output_filename) 
+                        '-ss {time_start} ' \
+                        '-t {time_end} ' \
+                        '-c:v h264_nvenc -c:a copy -threads 1 ' \
+                        '"{output_filename}"'.format(
+                            input_filename=input_filename,
+                            time_start=start,
+                            time_end=end,
+                            output_filename=output_filename) 
             else:
                 command = 'ffmpeg -i "{input_filename}" ' \
-				  '-ss {time_start} ' \
-				  '-t {time_end} ' \
-				  '-c:v libx264 -c:a copy -threads 1 ' \
-				  '"{output_filename}"'.format(
-					   input_filename=input_filename,
-					   time_start=start,
-					   time_end=end,
-					   output_filename=output_filename) 
+                        '-ss {time_start} ' \
+                        '-t {time_end} ' \
+                        '-c:v libx264 -c:a copy -threads 1 ' \
+                        '"{output_filename}"'.format(
+                            input_filename=input_filename,
+                            time_start=start,
+                            time_end=end,
+                            output_filename=output_filename) 
         elif os.path.exists(input_filenameV2):
             input_filename = input_filenameV2
-	    if use_cuda:
+            if use_cuda: #'-strict -2 ' \
                 command = 'ffmpeg -hwaccel cuvid -y "{input_filename}" ' \
-			'-ss {time_start} ' \
-			'-t {time_end} ' \
-			#'-strict -2 ' \
-			'-c:v h264_nvenc -c:a copy -threads 1 ' \
-			'"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' \
-			.format(
-				input_filename=input_filename,
-				time_start=start,
-				time_end=end,
-				output_filenameV2=os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION_V2),
-				output_filename=output_filename,)
-           else:
+                        '-ss {time_start} ' \
+                        '-t {time_end} ' \
+                        '-c:v h264_nvenc -c:a copy -threads 1 ' \
+                        '"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' .format(
+                            input_filename=input_filename,
+                            time_start=start,
+                            time_end=end,
+                            output_filenameV2=os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION_V2),
+                            output_filename=output_filename,)
+            else:
                command = 'ffmpeg -i "{input_filename}" ' \
-			'-ss {time_start} ' \
-			'-t {time_end} ' \
-			'-strict -2 ' \
-			'-c:v libx264 -c:a copy -threads 1 ' \
-			'"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -strict -2 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' \
-			.format(
-				input_filename=input_filename,
-				time_start=start,
-				time_end=end,
-				output_filenameV2=os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION_V2),
-				output_filename=output_filename,)
+                        '-ss {time_start} ' \
+                        '-t {time_end} ' \
+                        '-strict -2 ' \
+                        '-c:v libx264 -c:a copy -threads 1 ' \
+                        '"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -strict -2 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' .format(
+                            input_filename=input_filename,
+                            time_start=start,
+                            time_end=end,
+                            output_filenameV2=os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION_V2),
+                            output_filename=output_filename,)
         else:
             print("WARNING: Need to trim but can't find video: ", filename)
         if not os.path.exists(output_filename) and (os.path.exists(input_filename) or os.path.exists(input_filenameV2)):
@@ -199,7 +196,7 @@ def main(input_csv, output_dir, trim, num_jobs, proxy, cuda):
     TOTAL_VIDEOS = links_df.shape[0]
     # Download files by links from dataframe
     Parallel(n_jobs=num_jobs)(delayed(download_clip)(
-            row, label_to_dir, trim, count, proxy, cuda, is_test=True if 'test' in input_csv else False) for count, row in links_df.iterrows())
+            row, label_to_dir, trim, count, proxy, use_cuda=cuda, is_test=True if 'test' in input_csv else False) for count, row in links_df.iterrows())
 
     # Clean tmp directory
     # shutil.rmtree(label_to_dir['tmp'])
@@ -218,7 +215,7 @@ if __name__ == '__main__':
     p.add_argument('--trim', action='store_true', dest='trim', default=False,
                    help='If specified, trims downloaded video, using values, provided in input_csv.\n'
                         'Requires "ffmpeg" installed and added to environment PATH')
-	p.add_argument('--cuda', action='store_true', dest='cuda', default=False,
+    p.add_argument('--cuda', action='store_true', dest='cuda', default=False,
                    help='If specified, use cuda based ffmpeg to do the trim')
     p.add_argument('--num-jobs', type=int, default=1,
                    help='Number of parallel processes for downloading and trimming.')
@@ -228,3 +225,4 @@ if __name__ == '__main__':
                         'For example socks5://127.0.0.1:1080/. \n'
                         'Pass in an empty string (--proxy "") for direct connection.')
     main(**vars(p.parse_args()))
+
