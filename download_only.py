@@ -14,7 +14,7 @@ VIDEO_EXTENSION = '.mp4'
 VIDEO_EXTENSION_V2 = '.mkv'
 VIDEO_FORMAT = 'mp4'
 TOTAL_VIDEOS = 0
-LOADED = []
+tmplist = './my_tmp.txt'
 
 def create_file_structure(path, folders_names):
     """
@@ -58,7 +58,8 @@ def download_clip(row, label_to_dir, count, proxy=None):
             ["youtube-dl", URL, "--quiet", "-f",
             "bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
             print('Success downloading: ', filename)
-            LOADED.append(URL)
+            with open(tmplist, 'a+') as f:
+                f.write(URL+'\n')
         except: # subprocess.CalledProcessError:
             # with open(Flist, 'a+') as f:
             #     lines = f.readlines()
@@ -75,7 +76,6 @@ def download_clip(row, label_to_dir, count, proxy=None):
 
 def main(input_file, output_dir, num_jobs, proxy):
     global TOTAL_VIDEOS
-    global LOADED
 
     with open(input_file, 'r') as f:
         lines = f.readlines()
@@ -91,12 +91,13 @@ def main(input_file, output_dir, num_jobs, proxy):
 
     # Clean tmp directory
     # shutil.rmtree(label_to_dir['tmp'])
-
+    with open(tmplist, 'r') as f:
+        LOADED = f.readlines()
     with open(input_file, 'w') as f:
         for line in lines:
             if line not in LOADED:
-                f.write(line+'\n')
-    
+                f.write(line)
+    shutil.rmtree(tmplist)
 
 if __name__ == '__main__':
     description = 'Script for downloading youtube link'
