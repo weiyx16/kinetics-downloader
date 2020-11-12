@@ -127,11 +127,11 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
         elif os.path.exists(input_filenameV2):
             input_filename = input_filenameV2
             if use_cuda: #'-strict -2 ' \
-                command = 'ffmpeg -hwaccel cuvid -y "{input_filename}" ' \
+                command = 'ffmpeg -hwaccel cuvid -y -i "{input_filename}" ' \
                         '-ss {time_start} ' \
                         '-t {time_end} ' \
                         '-c:v h264_nvenc -c:a copy -threads 1 ' \
-                        '"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' .format(
+                        '"{output_filenameV2}" && ffmpeg -i "{output_filenameV2}" -map 0 -c copy -c:a aac "{output_filename}" && echo '123456' | sudo -S rm "{output_filenameV2}"' .format(
                             input_filename=input_filename,
                             time_start=start,
                             time_end=end,
@@ -143,7 +143,7 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                         '-t {time_end} ' \
                         '-strict -2 ' \
                         '-c:v libx264 -c:a copy -threads 1 ' \
-                        '"{output_filenameV2}" && ffmpeg -i {output_filenameV2} -map 0 -strict -2 -c copy -c:a aac {output_filename} && sudo rm {output_filenameV2}' .format(
+                        '"{output_filenameV2}" && ffmpeg -i "{output_filenameV2}" -map 0 -strict -2 -c copy -c:a aac "{output_filename}" && sudo rm "{output_filenameV2}"' .format(
                             input_filename=input_filename,
                             time_start=start,
                             time_end=end,
