@@ -7,6 +7,7 @@ from urllib.parse import quote
 # import pytube
 from joblib import delayed
 from joblib import Parallel
+import json
 
 URL_BASE = 'https://www.youtube.com/watch?v='
 
@@ -47,36 +48,52 @@ def download_clip(row, label_to_dir, count, proxy=None):
 
     if not os.path.exists(input_filename) and not os.path.exists(input_filenameV2):
         print('Start downloading: ', filename)
-        try:
+        #try:
             # pytube.YouTube(URL_BASE + filename).\
             #     streams.filter(subtype=VIDEO_FORMAT).first().\
             #     download(output_path, filename)
                     # , "--proxy", proxy
             # 'bestvideo[height<=480]+bestaudio/best[height<=480]'
             # https://l1ving.github.io/youtube-dl/#format-selection-examples
-            subprocess.check_output(
-            ["youtube-dl", URL, "--quiet", "-f",
-            "bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
-            print('Success downloading: ', filename)
+        output = subprocess.getoutput("youtube-dl {} --quiet -f best --output {} --no-continue".format(URL, os.path.join(output_path, filename + VIDEO_EXTENSION)))
+            #subprocess.check_output(
+            #["youtube-dl", URL, "--quiet", "-f",
+            #"bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
+        if "YouTube said: Unable to extract video data" in output:
+            print(' Warning Private Video: ', filename)
             with open(tmplist, 'a+') as f:
                 f.write(URL+'\n')
-        except: # subprocess.CalledProcessError:
-            # with open(Flist, 'a+') as f:
-            #     lines = f.readlines()
-            #     if (URL_BASE + filename) not in lines:
-            #         f.write(URL_BASE + filename+'\n')
-            print('Failed: Unavailable video: ', filename)
+        else:
+            if len(output) < 5:
+                print('Success downloading: ', filename)
+                with open(tmplist, 'a+') as f:
+                    f.write(URL+'\n')
+            else:
+                #with open(Flist, 'a+') as f:
+                #    lines = f.readlines()
+                #    if (URL_BASE + filename) not in lines:
+                #        f.write(URL_BASE + filename+'\n')
+                # TOOOOO MANY Request
+                print('Failed: Unavailable video: ', filename)
+                if 'HTTP Error 429: Too Many Requests' in output:
+                    print('429 occured!')
+                    time.sleep(120)
+
+        #print("youtube-dl {} --quiet -f bestvideo+bestaudio/best --output {} --no-continue".format(URL, os.path.join(output_path, filename + VIDEO_EXTENSION_V2)))
+        #except: # subprocess.CalledProcessError:
+            #print('Failed: Unavailable video: ', filename)
 
     else:
         print('Already downloaded: ', filename)
     
-    time.sleep(2)
+    time.sleep(5)
     print('Processed %i out of %i' % (count + 1, TOTAL_VIDEOS))
 
 
 def main(input_file, output_dir, num_jobs, proxy):
     global TOTAL_VIDEOS
 
+    os.system('rm {}'.format(tmplist))
     with open(input_file, 'r') as f:
         lines = f.readlines()
 
@@ -97,7 +114,8 @@ def main(input_file, output_dir, num_jobs, proxy):
         for line in lines:
             if line not in LOADED:
                 f.write(line)
-    shutil.rmtree(tmplist)
+    #shutil.rmtree(tmplist)
+    os.system('rm {}'.format(tmplist))
 
 if __name__ == '__main__':
     description = 'Script for downloading youtube link'
