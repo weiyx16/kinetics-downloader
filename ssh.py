@@ -5,6 +5,7 @@ import subprocess
 
 machine_need_change_list = []
 machine_need_run_list = [1,2,3,4]
+is_run = False
 
 ip_list = []
 with open('./ip_list', 'r') as f:
@@ -12,7 +13,7 @@ with open('./ip_list', 'r') as f:
     for ip in ips:
         ip_list.append(ip[:-1])
 
-for machine in machine_need_change_list:
+for idx, machine in enumerate(machine_need_change_list):
     machine = 'VLdownload' + str(machine)
     out = json.loads(subprocess.getoutput("az vm nic list -g EAST_US --vm-name {}".format(machine)))
     nic = out[0]['id'].split('/')[-1]
@@ -32,7 +33,7 @@ for machine in machine_need_change_list:
 
     out = json.loads(subprocess.getoutput("az vm list-ip-addresses --resource-group EAST_US --name {}".format(machine)))
     print('Machine {} new IP: {}'.format(machine, out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']))
-    ip_list[machine-1] = out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']
+    ip_list[idx] = out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']
 
 # update ip_list 
 with open('./ip_list', 'w') as f:
@@ -52,10 +53,29 @@ for machine in machine_need_run_list:
     key = paramiko.RSAKey(data=base64.b64decode(key_list[machine-1]))
     ssh.get_host_keys().add(server, 'ssh-rsa', key)
     ssh.connect(server, username=username, password=password)
-    cmd = "ls" #"./run.sh"
+    ## run from list and save to dataset_split/tmp
+    if is_run:
+        cmd = "tmux kill-session -t 0 ;"
+        cmd += "cd /home/t-zhuyao/kinetics ;"
+        cmd += "python update.py ;"
+        # https://janakiev.com/blog/python-background/
+        # https://stackoverflow.com/questions/2975624/how-to-run-a-python-script-in-the-background-even-after-i-logout-ssh
+        #cmd += "sudo rm /home/t-zhuyao/kinetics/output.log ;"
+        #cmd += "nohup python3 -u /home/t-zhuyao/kinetics/download_only.py --input_file /home/t-zhuyao/kinetics/Fail_download_video.txt --output_dir /home/t-zhuyao/mycontainer/train/ --num-jobs 2 > /home/t-zhuyao/kinetics/output.log &"
+        cmd += "tmux new-session -d -s 0 'python3 /home/t-zhuyao/kinetics/download_only.py --input_file /home/t-zhuyao/kinetics/Fail_download_video.txt --output_dir /home/t-zhuyao/mycontainer/train/ --num-jobs 2' ;"
+    
+    ## run from csv and save to certain_subdir
+    #cmd = TODO, needed in yt8m
+    else:
+        ## monitor the status
+        cmd = "cat /home/t-zhuyao/kinetics/my_tmp.txt | wc -l"
+    
+    ## used when reboot the machine during downloading Fail_download_list
+    #cmd = "cd /home/t-zhuyao/kinetics & python update.py"
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
-    #for line in ssh_stdout:
-    #    print('... ' + line.strip('\n'))
+    if not is_run:
+        for line in ssh_stdout:
+            print('... ' + line.strip('\n'))
     print(' machine : {}, error msg:'.format(machine))
     for line in ssh_stderr:
         print('... ' + line.strip('\n'))
