@@ -18,9 +18,8 @@ VIDEO_EXTENSION = '.mp4'
 VIDEO_EXTENSION_V2 = '.mkv'
 VIDEO_FORMAT = 'mp4'
 TOTAL_VIDEOS = 0
-Flist = "./Fail_download_video.txt"
-FTlist = "./Fail_trimmed_video_v2.txt"
-Slist = "./Success_trimmed_video.txt"
+FTlist = "./Fail_trimmed_video_test.txt"
+Slist = "./Success_trimmed_video_test.txt"
 
 def create_file_structure(path, folders_names):
     """
@@ -57,7 +56,7 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
     if not is_test:
         output_path = label_to_dir['tmp'] if trim else label_to_dir[label]
     else:
-        output_path = label_to_dir['tmp'] if trim else label_to_dir['.']
+        output_path = label_to_dir['.'] if trim else label_to_dir['.']
 
     # don't download if already exists
     input_filename = os.path.join(output_path, filename + VIDEO_EXTENSION)
@@ -77,7 +76,10 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                 lines = f.readlines()
                 if (filename + '_{}_{}'.format(start, end)) not in lines:
                     f.write(filename + '_{}_{}'.format(start, end)+'\n')
-                
+            if os.path.exists(input_filename):
+                subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
+            else:
+                subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filenameV2) ,shell= True, stdout= subprocess.PIPE)
         elif os.path.exists(input_filename):
             if use_cuda:
                 command = 'ffmpeg -hwaccel cuvid -y -i "{input_filename}" ' \

@@ -4,14 +4,10 @@ import json
 import subprocess
 
 machine_need_change_list = []
-machine_need_run_list = [1,2,3,4]
-is_run = False
+machine_need_run_list = [6]
+is_run = True
 
-ip_list = []
-with open('./ip_list', 'r') as f:
-    ips = f.readlines()
-    for ip in ips:
-        ip_list.append(ip[:-1])
+ip_json = json.load(open('./ip.json'))
 
 for idx, machine in enumerate(machine_need_change_list):
     machine = 'VLdownload' + str(machine)
@@ -33,24 +29,20 @@ for idx, machine in enumerate(machine_need_change_list):
 
     out = json.loads(subprocess.getoutput("az vm list-ip-addresses --resource-group EAST_US --name {}".format(machine)))
     print('Machine {} new IP: {}'.format(machine, out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']))
-    ip_list[idx] = out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']
+    ip_list[machine] = out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']
 
 # update ip_list 
-with open('./ip_list', 'w') as f:
-    for ip in ip_list:
-        f.write(ip+'\n')
+with open('./ip.json', 'w') as json_file:
+    json.dump(ip_json, json_file)
 
-key_list = [b'AAAAB3NzaC1yc2EAAAADAQABAAABAQDA1wHTaqvnTWef3uwlTtbhF7IljfXsDp+IiwzJ55OiRWyeybpY35XYgVwNSE50N7WbLT13r8DIEqlmnMWC1jaCrgmkxQxVSe6DtPtr1uiFZCkrZFFSCNaOeMA/e6k9sPYyt/UDYa3H8BL1e/iZOqnFV1iZyBkdPw7q/RMiaKibaLBi9opmVdGAE65kRy7XUkWrMpNfBEOQZvyeZBV3Wfixb9g9TVLQzMThH3TE9trdxriGSiBP81F/qQ/xhqe+F4nemiuvV1GVtja9zcwne/1RsX4lEK76TQm9hXlTOTdb4OnYLSaCOioK7Sb4iU7xuzycZqINSlyN04svzJYinIUZ',
-b'AAAAB3NzaC1yc2EAAAADAQABAAABAQDWbb0W0/eDBe5jq28Qy2jNUpIu2EgJ4bF3owrEIBGztlxCFv5V9DCovA1UVT9ld6KSjVaXsHW8tl1yU37/P9F5xbSwpPy7pd4RqB+akLldZ7Pcto/urdYkNu82XmYJI1o57rroiMk6RA6eYGzX/ENwdDybQb8YkQu6Kusy4fMM+S2seMOWlPTvch7aMVvJak3LQiJotYxh8qf37c8E5sd3zRRk+PD2Ctr6CmrM1rMI6O9afn2JNxPNR0HpFFDqzHPDJvB8Pkrgcopxz4WT1v6KlY/a9nvD6wI+b33xE10XLiqQpbwibdzdAuGzr473Ko0yWeUAZ1XIdDi/SlCPo1l3',
-b'AAAAB3NzaC1yc2EAAAADAQABAAABAQCexJEXaSr0OEVdTE4UUQco0654zZKq5LO84CzgOGtVh4d9bVvN8CzP7mXXOaVAeULqoWjN2AJPLa42Dvl8TRFb4fSL7zbIo4ANHdqq789fyqE4zQdL2KdgRvanIaFMWw2XT4Ee80cvRh6xYbsAax8FUBkbQrfzTCmvixrX10apF993L5Bj48t0q644Ya7M3CHXP8o8TX1L3m4eJfTMD/P99CFSqy3eNRpHrmFH7IKl3Uxk0NTriKQ5+p4QJ3iQiYnCveT4T5NKwy6HnuwFn8Rmce2VQ2pqB0vevSzKUOGBkg5FWw8QasMm/wN1S9fG1ssXjjC30Upde+VRlPRcGyNX',
-b'AAAAB3NzaC1yc2EAAAADAQABAAABAQDS4BkM8zhY+QBI8qch3LcoEc/YwKpdhAqxOJGV4/z6p6yoK8siyBc1gzSfXrBmCO5c4r7ujbhbB8RD7ECPRrvOPiDeJodequoSQzoxXs0KHBd41ehBlxSBoBIwnWZvOZB6ZigamYdq79Bb+f5giRYyWXHqyCEtphdh2ZNQgQl+Rf6wJQSL80SQe2EEgiUnnzsEcx2on1P59tC5swt6NOnSRCM+yf70qzmDkoacMexQVJc7ofmrZZkFhvYdPC9nFX1GHySL0CimeF1BByrPZzfPdewmK47m6a7WYFQCMOdfuznzYYNEk5uW6OlQGYnVapINr/rJ5hG7IZ4+JIIPAjB1',
-]
+key_json = json.load(open('./key.json'))
 for machine in machine_need_run_list:
-    server = ip_list[machine-1]
+    machine = 'VLdownload' + str(machine)
+    server = ip_json[machine]
     username = 't-zhuyao'
-    password = '_VLdownload'+str(machine)
+    password = '_' + machine
     ssh = paramiko.SSHClient()
-    key = paramiko.RSAKey(data=base64.b64decode(key_list[machine-1]))
+    key = paramiko.RSAKey(data=base64.b64decode(key_json[machine]))
     ssh.get_host_keys().add(server, 'ssh-rsa', key)
     ssh.connect(server, username=username, password=password)
     ## run from list and save to dataset_split/tmp

@@ -1,8 +1,3 @@
-"""
-Install Youtube-dl
-sudo curl -L https://github.com/l1ving/youtube-dl/releases/latest/download/youtube-dl -o /usr/local/bin/youtube-dl
-sudo chmod a+rx /usr/local/bin/youtube-dl
-"""
 import time
 import argparse
 import os
@@ -83,7 +78,8 @@ def download_clip(row, label_to_dir, count, proxy=None):
                 if 'HTTP Error 429: Too Many Requests' in output:
                     print('429 occured!')
                     time.sleep(120)
-
+                else:
+                    print(output)
         #print("youtube-dl {} --quiet -f bestvideo+bestaudio/best --output {} --no-continue".format(URL, os.path.join(output_path, filename + VIDEO_EXTENSION_V2)))
         #except: # subprocess.CalledProcessError:
             #print('Failed: Unavailable video: ', filename)
