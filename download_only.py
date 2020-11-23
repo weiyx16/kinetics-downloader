@@ -1,3 +1,8 @@
+"""
+Install Youtube-dl
+sudo curl -L https://github.com/l1ving/youtube-dl/releases/latest/download/youtube-dl -o /usr/local/bin/youtube-dl
+sudo chmod a+rx /usr/local/bin/youtube-dl
+"""
 import time
 import argparse
 import os
@@ -55,7 +60,7 @@ def download_clip(row, label_to_dir, count, proxy=None):
                     # , "--proxy", proxy
             # 'bestvideo[height<=480]+bestaudio/best[height<=480]'
             # https://l1ving.github.io/youtube-dl/#format-selection-examples
-        output = subprocess.getoutput("youtube-dl {} --quiet -f best --output {} --no-continue".format(URL, os.path.join(output_path, filename + VIDEO_EXTENSION)))
+        output = subprocess.getoutput("sudo /usr/local/bin/youtube-dl {} --quiet -f best --output {} --no-continue".format(URL, os.path.join(output_path, filename + VIDEO_EXTENSION)))
             #subprocess.check_output(
             #["youtube-dl", URL, "--quiet", "-f",
             #"bestvideo[ext={}]+bestaudio/best".format(VIDEO_FORMAT), "--output", os.path.join(output_path, filename + VIDEO_EXTENSION), "--no-continue"], stderr=subprocess.DEVNULL)
