@@ -7,12 +7,13 @@ import json
 
 username = "t-zhuyao"
 resource_group = "EAST_US"
-machine_list = ['VLdownload6',]
+machine_list = [7,8,9,10,11,12,13,14,15,16]
 
 ip_json = json.load(open('./ip.json'))
 
 
 for machine in machine_list:
+    machine = 'VLdownload' + str(machine)
     password = "_" + machine
     cmd = []
     cmd.append("az vm create")
@@ -44,6 +45,7 @@ class MyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 for machine in machine_list:
+    machine = 'VLdownload' + str(machine)
     server = ip_json[machine]
     password = '_' + machine
     test_key = b'AAAAB3NzaC1yc2EAAAADAQABAAABAQDS4BkM8zhY+QBI8qch3LcoEc/YwKpdhAqxOJGV4/z6p6yoK8siyBc1gzSfXrBmCO5c4r7ujbhbB8RD7ECPRrvOPiDeJodequoSQzoxXs0KHBd41ehBlxSBoBIwnWZvOZB6ZigamYdq79Bb+f5giRYyWXHqyCEtphdh2ZNQgQl+Rf6wJQSL80SQe2EEgiUnnzsEcx2on1P59tC5swt6NOnSRCM+yf70qzmDkoacMexQVJc7ofmrZZkFhvYdPC9nFX1GHySL0CimeF1BByrPZzfPdewmK47m6a7WYFQCMOdfuznzYYNEk5uW6OlQGYnVapINr/rJ5hG7IZ4+JIIPAjB1'
@@ -62,6 +64,7 @@ with open('./key.json', 'w') as json_file:
 
 # config new machine
 for machine in machine_list:
+    machine = 'VLdownload' + str(machine)
     server = ip_json[machine]
     password = '_' + machine
 
@@ -86,7 +89,7 @@ for machine in machine_list:
     # tranfer new files
     ftp_client = ssh.open_sftp()
     ftp_client.put('./download_only.py', '/home/t-zhuyao/kinetics/download_only.py')
-    tp_client.put('./update.py', '/home/t-zhuyao/kinetics/update.py')
+    ftp_client.put('./update.py', '/home/t-zhuyao/kinetics/update.py')
     # TODO: KINETICS CERTAIN
     machine_split = int(machine[len('VLdownload'):])
     split_file = f'/data/home/v-yixwe/kinetics-700/kinetics700_2020/train_split_{machine_split-1}.txt'

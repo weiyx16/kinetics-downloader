@@ -4,7 +4,7 @@ import json
 import subprocess
 
 machine_need_change_list = []
-machine_need_run_list = [6]
+machine_need_run_list = list(np.range(7, 17))
 is_run = True
 
 ip_json = json.load(open('./ip.json'))
