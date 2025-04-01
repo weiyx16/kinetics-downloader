@@ -3,8 +3,8 @@ import subprocess
 
 
 resource_group = "EAST_US"
-machine_list = ['VLdownload5',]
-
+machine_list = 'VLdownload'
+machine_list = [machine_list+str(i) for i in range(4, 16)]
 for machine in machine_list:
     cmd = []
     cmd.append("az vm delete")

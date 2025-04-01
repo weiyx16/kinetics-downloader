@@ -28,12 +28,12 @@ def create_file_structure(path, folders_names):
         Mapping from label to absolute path folder, with videos of this label
     """
     mapping = {}
-    if not os.path.exists(path):
-        os.mkdir(path)
+    #if not os.path.exists(path):
+    #    os.mkdir(path)
     for name in folders_names:
         dir_ = os.path.join(path, name)
-        if not os.path.exists(dir_):
-            os.mkdir(dir_)
+        #if not os.path.exists(dir_):
+        #    os.mkdir(dir_)
         mapping[name] = dir_
     return mapping
 
@@ -76,10 +76,10 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                 lines = f.readlines()
                 if (filename + '_{}_{}'.format(start, end)) not in lines:
                     f.write(filename + '_{}_{}'.format(start, end)+'\n')
-            if os.path.exists(input_filename):
-                subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
-            else:
-                subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filenameV2) ,shell= True, stdout= subprocess.PIPE)
+            # if os.path.exists(input_filename):
+            #     subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
+            # else:
+            #     subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filenameV2) ,shell= True, stdout= subprocess.PIPE)
         elif os.path.exists(input_filename):
             if use_cuda:
                 command = 'ffmpeg -hwaccel cuvid -y -i "{input_filename}" ' \
@@ -92,7 +92,7 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                             time_end=end,
                             output_filename=output_filename) 
             else:
-                command = 'ffmpeg -i "{input_filename}" ' \
+                command = 'ffmpeg -y -i "{input_filename}" ' \
                         '-ss {time_start} ' \
                         '-t {time_end} ' \
                         '-c:v libx264 -c:a copy -threads 1 ' \
@@ -115,7 +115,7 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                             output_filenameV2=os.path.join(label_to_dir[label] if not is_test else label_to_dir['.'], filename + '_{}_{}'.format(start, end) + VIDEO_EXTENSION_V2),
                             output_filename=output_filename,)
             else:
-               command = 'ffmpeg -i "{input_filename}" ' \
+               command = 'ffmpeg -y -i "{input_filename}" ' \
                         '-ss {time_start} ' \
                         '-t {time_end} ' \
                         '-strict -2 ' \
@@ -133,12 +133,12 @@ def download_clip(row, label_to_dir, trim, count, proxy=None, is_test=False, use
                 subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
                 with open(Slist, 'a') as f:
                     f.write(filename + '_{}_{}'.format(start, end)+'\n')
-                print('Successful trimming: ', filename)
-                try:
-                    #subprocess.call("sudo rm {}".format(input_filename), shell=True)
-                    subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
-                except:
-                    print("ERROR: rm {}".format(input_filename))
+                print('Successful trimming: ', label+'/'+filename)
+                # try:
+                #     #subprocess.call("sudo rm {}".format(input_filename), shell=True)
+                #     subprocess.Popen("echo '123456' | sudo -S rm '{}' ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
+                # except:
+                #     print("ERROR: rm {}".format(input_filename))
             except: # subprocess.CalledProcessError:
                 print('Error while trimming: ', filename)
                 with open(FTlist, 'a+') as f:
@@ -165,11 +165,30 @@ def main(input_csv, output_dir, trim, num_jobs, proxy, cuda):
         folders_names = ['tmp', '.']
     label_to_dir = create_file_structure(path=output_dir,
                                          folders_names=folders_names)
-
-    TOTAL_VIDEOS = links_df.shape[0]
+    
+    # supplementary file:
+    if os.path.exists('./filter_last.txt'):
+        with open('./filter_last.txt') as f:
+            lines = f.readlines()
+    else:
+        with open('./files_in_train_tmp.txt') as f:
+            lines = f.readlines()
+    print(len(lines))
+    all_video_id = []
+    for _, row in links_df.iterrows():
+        if lines is not None and URL_BASE+row['youtube_id']+'\n' in lines:
+            all_video_id.append(row)
+        #elif lines is not None:
+        #    if f"{row['youtube_id']}.mp4" in lines or f"{row['youtube_id']}.mkv" in lines:
+        #        all_video_id.append(row)
+        else:
+            pass
+            #all_video_id.append(row)
+    TOTAL_VIDEOS = len(all_video_id) #links_df.shape[0]
+    print(TOTAL_VIDEOS)
     # Download files by links from dataframe
     Parallel(n_jobs=num_jobs)(delayed(download_clip)(
-            row, label_to_dir, trim, count, proxy, use_cuda=cuda, is_test=True if 'test' in input_csv else False) for count, row in links_df.iterrows())
+            row, label_to_dir, trim, count, proxy, use_cuda=cuda, is_test=True if 'test' in input_csv else False) for count, row in enumerate(all_video_id)) #for count, row in links_df.iterrows())
 
     # Clean tmp directory
     # shutil.rmtree(label_to_dir['tmp'])

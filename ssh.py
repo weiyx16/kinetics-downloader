@@ -3,9 +3,9 @@ import base64
 import json
 import subprocess
 
-machine_need_change_list = []
-machine_need_run_list = list(np.range(7, 17))
-is_run = True
+machine_need_change_list = [] #list(range(4, 5))
+machine_need_run_list = list(range(1, 17))
+is_run = False
 
 ip_json = json.load(open('./ip.json'))
 
@@ -29,7 +29,7 @@ for idx, machine in enumerate(machine_need_change_list):
 
     out = json.loads(subprocess.getoutput("az vm list-ip-addresses --resource-group EAST_US --name {}".format(machine)))
     print('Machine {} new IP: {}'.format(machine, out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']))
-    ip_list[machine] = out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']
+    ip_json[machine] = out[0]['virtualMachine']['network']['publicIpAddresses'][0]['ipAddress']
 
 # update ip_list 
 with open('./ip.json', 'w') as json_file:
@@ -54,14 +54,16 @@ for machine in machine_need_run_list:
         # https://stackoverflow.com/questions/2975624/how-to-run-a-python-script-in-the-background-even-after-i-logout-ssh
         #cmd += "sudo rm /home/t-zhuyao/kinetics/output.log ;"
         #cmd += "nohup python3 -u /home/t-zhuyao/kinetics/download_only.py --input_file /home/t-zhuyao/kinetics/Fail_download_video.txt --output_dir /home/t-zhuyao/mycontainer/train/ --num-jobs 2 > /home/t-zhuyao/kinetics/output.log &"
-        cmd += "tmux new-session -d -s 0 'python3 /home/t-zhuyao/kinetics/download_only.py --input_file /home/t-zhuyao/kinetics/Fail_download_video.txt --output_dir /home/t-zhuyao/mycontainer/train/ --num-jobs 2' ;"
+        cmd += "tmux new-session -d -s 0 'python3 /home/t-zhuyao/kinetics/download_only.py --input_file /home/t-zhuyao/kinetics/Fail_download_video_train.txt --output_dir /home/t-zhuyao/mycontainer/train/ --num-jobs 2' ;"
     
     ## run from csv and save to certain_subdir
     #cmd = TODO, needed in yt8m
     else:
         ## monitor the status
-        cmd = "cat /home/t-zhuyao/kinetics/my_tmp.txt | wc -l"
-    
+        #cmd = "cat /home/t-zhuyao/kinetics/my_tmp.txt | wc -l"
+        #cmd = "cat /home/t-zhuyao/kinetics/Fail_download_video.txt | wc -l"
+        cmd = "sudo curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl ;"
+        cmd += "sudo chmod a+rx /usr/local/bin/youtube-dl ;"
     ## used when reboot the machine during downloading Fail_download_list
     #cmd = "cd /home/t-zhuyao/kinetics & python update.py"
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)

@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from joblib import delayed
 from joblib import Parallel
-FTlist = "./Fail_trimmed_video_v2.txt"
+FTlist = "./Fail_trimmed_video.txt"
 tmplist = "./tmp_list.txt"
 Slist = "./Success_trimmed_video.txt"
     
@@ -22,17 +22,19 @@ def run(command, count, LENGTH):
         print('Already trimmed: ', output_filename)
         with open(Slist, 'a') as f:
             f.write(input_filename.split('/')[-1]+'\n')
-    else:
+    elif os.path.exists(input_filename):
         try:
-            subprocess.check_output(command, shell=True, stderr=subprocess.DEVNULL)
+            subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+            #error_msg = subprocess.getoutput(command)
+            #print(error_msg)
             with open(Slist, 'a') as f:
                 f.write(input_filename.split('/')[-1]+'\n')
             print('Successful trimming: ', input_filename.split('/')[-1])
-            try:
-                #subprocess.call("sudo rm {}".format(input_filename), shell=True)
-                subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
-            except:
-                print("ERROR: rm {}".format(input_filename))
+            # try:
+            #     #subprocess.call("sudo rm {}".format(input_filename), shell=True)
+            #     subprocess.Popen("echo '123456' | sudo -S rm {} ".format(input_filename) ,shell= True, stdout= subprocess.PIPE)
+            # except:
+            #     print("ERROR: rm {}".format(input_filename))
         except: # subprocess.CalledProcessError:
             print('Error while trimming: ', input_filename.split('/')[-1])
             with open(tmplist, 'a+') as f:
@@ -40,4 +42,4 @@ def run(command, count, LENGTH):
     if count % 100 == 0:
         print('Processed %i out of %i' % (count + 1, LENGTH))
 Parallel(n_jobs=num_jobs)(delayed(run)(line[:-1], idx, len(lines)) for idx, line in enumerate(lines))
-subprocess.call(f"mv {tmplist} {FTlist}")
+os.system(f"echo '123456' | sudo -S mv {tmplist} {FTlist}")

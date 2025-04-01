@@ -7,7 +7,7 @@ import json
 
 username = "t-zhuyao"
 resource_group = "EAST_US"
-machine_list = [7,8,9,10,11,12,13,14,15,16]
+machine_list = [4] #[7,8,9,10,11,12,13,14,15,16]
 
 ip_json = json.load(open('./ip.json'))
 
